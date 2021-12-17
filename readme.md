@@ -1,25 +1,28 @@
-<h2>mxj - to/from maps, XML and JSON</h2>
+## mxj - to/from maps, XML and JSON
+
 Decode/encode XML to/from map[string]interface{} (or JSON) values, and extract/modify values from maps by key or key-path, including wildcards.
 
 mxj supplants the legacy x2j and j2x packages. If you want the old syntax, use mxj/x2j and mxj/j2x packages.
 
-<h4>Installation</h4>
-Using go.mod:
-<pre>
-go get github.com/clbanning/mxj/v2@v2.3.2
-</pre>
+#### Installation
 
-<pre>
+Using go.mod:
+```console
+go get github.com/clbanning/mxj/v2@v2.3.2
+```
+
+```go
 import "github.com/clbanning/mxj/v2"
-</pre>
+```
 
 ... or just vendor the package.
 
-<h4>Related Packages</h4>
+#### Related Packages
 
 https://github.com/clbanning/checkxml provides functions for validating XML data.
 
-<h4>Refactor Encoder - 2020.05.01</h4>
+#### Refactor Encoder - 2020.05.01
+
 Issue #70 highlighted that encoding large maps does not scale well, since the original logic used string appends operations. Using bytes.Buffer results in linear scaling for very large XML docs. (Metrics based on MacBook Pro i7 w/ 16 GB.)
 
 	Nodes      m.XML() time
@@ -28,7 +31,8 @@ Issue #70 highlighted that encoding large maps does not scale well, since the or
 	164678      59.826412ms
 	482598     109.358007ms
 
-<h4>Refactor Decoder - 2015.11.15</h4>
+#### Refactor Decoder - 2015.11.15
+
 For over a year I've wanted to refactor the XML-to-map[string]interface{} decoder to make it more performant.  I recently took the time to do that, since we were using github.com/clbanning/mxj in a production system that could be deployed on a Raspberry Pi.  Now the decoder is comparable to the stdlib JSON-to-map[string]interface{} decoder in terms of its additional processing overhead relative to decoding to a structure value.  As shown by:
 
 	BenchmarkNewMapXml-4         	  100000	     18043 ns/op
@@ -40,7 +44,7 @@ For over a year I've wanted to refactor the XML-to-map[string]interface{} decode
 	BenchmarkNewMapJsonBooks-4   	  100000	     17222 ns/op
 	BenchmarkNewStructJsonBooks-4	  100000	     15309 ns/op
 
-<h4>Notices</h4>
+#### Notices
 
 	2021.02.02: v2.5 - add XmlCheckIsValid toggle to force checking that the encoded XML is valid
 	2020.12.14: v2.4 - add XMLEscapeCharsDecoder to preserve XML escaped characters in Map values
@@ -75,68 +79,91 @@ For over a year I've wanted to refactor the XML-to-map[string]interface{} decode
 	2014-08-02: AnyXml() and AnyXmlIndent() will try to marshal arbitrary values to XML.
 	2014-04-28: ValuesForPath() and NewMap() now accept path with indexed array references.
 
-<h4>Basic Unmarshal XML to map[string]interface{}</h4>
-<pre>type Map map[string]interface{}</pre>
+#### Basic Unmarshal XML to map[string]interface{}
+
+```go
+type Map map[string]interface{}
+```
 
 Create a `Map` value, 'mv', from any `map[string]interface{}` value, 'v':
-<pre>mv := Map(v)</pre>
+```go
+mv := Map(v)
+```
 
 Unmarshal / marshal XML as a `Map` value, 'mv':
-<pre>mv, err := NewMapXml(xmlValue) // unmarshal
-xmlValue, err := mv.Xml()      // marshal</pre>
+```go
+mv, err := NewMapXml(xmlValue) // unmarshal
+xmlValue, err := mv.Xml()      // marshal
+```
 
 Unmarshal XML from an `io.Reader` as a `Map` value, 'mv':
-<pre>mv, err := NewMapXmlReader(xmlReader)         // repeated calls, as with an os.File Reader, will process stream
-mv, raw, err := NewMapXmlReaderRaw(xmlReader) // 'raw' is the raw XML that was decoded</pre>
+```go
+mv, err := NewMapXmlReader(xmlReader)         // repeated calls, as with an os.File Reader, will process stream
+mv, raw, err := NewMapXmlReaderRaw(xmlReader) // 'raw' is the raw XML that was decoded
+```
 
 Marshal `Map` value, 'mv', to an XML Writer (`io.Writer`):
-<pre>err := mv.XmlWriter(xmlWriter)
-raw, err := mv.XmlWriterRaw(xmlWriter) // 'raw' is the raw XML that was written on xmlWriter</pre>
-   
+```go
+err := mv.XmlWriter(xmlWriter)
+raw, err := mv.XmlWriterRaw(xmlWriter) // 'raw' is the raw XML that was written on xmlWriter
+```
+
 Also, for prettified output:
-<pre>xmlValue, err := mv.XmlIndent(prefix, indent, ...)
+```go
+xmlValue, err := mv.XmlIndent(prefix, indent, ...)
 err := mv.XmlIndentWriter(xmlWriter, prefix, indent, ...)
-raw, err := mv.XmlIndentWriterRaw(xmlWriter, prefix, indent, ...)</pre>
+raw, err := mv.XmlIndentWriterRaw(xmlWriter, prefix, indent, ...)
+```
 
 Bulk process XML with error handling (note: handlers must return a boolean value):
-<pre>err := HandleXmlReader(xmlReader, mapHandler(Map), errHandler(error))
-err := HandleXmlReaderRaw(xmlReader, mapHandler(Map, []byte), errHandler(error, []byte))</pre>
+```go
+err := HandleXmlReader(xmlReader, mapHandler(Map), errHandler(error))
+err := HandleXmlReaderRaw(xmlReader, mapHandler(Map, []byte), errHandler(error, []byte))
+```
 
 Converting XML to JSON: see Examples for `NewMapXml` and `HandleXmlReader`.
 
 There are comparable functions and methods for JSON processing.
 
 Arbitrary structure values can be decoded to / encoded from `Map` values:
-<pre>mv, err := NewMapStruct(structVal)
-err := mv.Struct(structPointer)</pre>
+```go
+mv, err := NewMapStruct(structVal)
+err := mv.Struct(structPointer)
+```
 
-<h4>Extract / modify Map values</h4>
+#### Extract / modify Map values
 To work with XML tag values, JSON or Map key values or structure field values, decode the XML, JSON
 or structure to a `Map` value, 'mv', or cast a `map[string]interface{}` value to a `Map` value, 'mv', then:
-<pre>paths := mv.PathsForKey(key)
+```go
+paths := mv.PathsForKey(key)
 path := mv.PathForKeyShortest(key)
 values, err := mv.ValuesForKey(key, subkeys)
 values, err := mv.ValuesForPath(path, subkeys)
-count, err := mv.UpdateValuesForPath(newVal, path, subkeys)</pre>
+count, err := mv.UpdateValuesForPath(newVal, path, subkeys)
+```
 
 Get everything at once, irrespective of path depth:
-<pre>leafnodes := mv.LeafNodes()
-leafvalues := mv.LeafValues()</pre>
+```go
+leafnodes := mv.LeafNodes()
+leafvalues := mv.LeafValues()
+```
 
 A new `Map` with whatever keys are desired can be created from the current `Map` and then encoded in XML
 or JSON. (Note: keys can use dot-notation.)
-<pre>newMap, err := mv.NewMap("oldKey_1:newKey_1", "oldKey_2:newKey_2", ..., "oldKey_N:newKey_N")
+```go
+newMap, err := mv.NewMap("oldKey_1:newKey_1", "oldKey_2:newKey_2", ..., "oldKey_N:newKey_N")
 newMap, err := mv.NewMap("oldKey1", "oldKey3", "oldKey5") // a subset of 'mv'; see "examples/partial.go"
 newXml, err := newMap.Xml()   // for example
-newJson, err := newMap.Json() // ditto</pre>
+newJson, err := newMap.Json() // ditto
+```
 
-<h4>Usage</h4>
+#### Usage
 
 The package is fairly well [self-documented with examples](http://godoc.org/github.com/clbanning/mxj).
 
 Also, the subdirectory "examples" contains a wide range of examples, several taken from golang-nuts discussions.
 
-<h4>XML parsing conventions</h4>
+#### XML parsing conventions
 
 Using NewMapXml()
 
@@ -152,13 +179,13 @@ Using NewMapXml()
 Using NewMapXmlSeq()
 
    - Attributes are parsed to `map["#attr"]map[<attr_label>]map[string]interface{}`values
-     where the `<attr_label>` value has "#text" and "#seq" keys - the "#text" key holds the 
+     where the `<attr_label>` value has "#text" and "#seq" keys - the "#text" key holds the
      value for `<attr_label>`.
    - All elements, except for the root, have a "#seq" key.
    - Comments, directives, and process instructions are unmarshalled into the Map using the
      keys "#comment", "#directive", and "#procinst", respectively. (See documentation for more
      specifics.)
-   - Name space syntax is preserved: 
+   - Name space syntax is preserved:
       - `<ns:key>something</ns.key>` parses to `map["ns:key"]interface{}{"something"}`
       - `xmlns:ns="http://myns.com/ns"` parses to `map["xmlns:ns"]interface{}{"http://myns.com/ns"}`
 
@@ -167,7 +194,7 @@ Both
    - By default, "Nan", "Inf", and "-Inf" values are not cast to float64.  If you want them
      to be cast, set a flag to cast them  using CastNanInf(true).
 
-<h4>XML encoding conventions</h4>
+#### XML encoding conventions
 
    - 'nil' `Map` values, which may represent 'null' JSON values, are encoded as `<tag/>`.
      NOTE: the operation is not symmetric as `<tag/>` elements are decoded as `tag:""` `Map` values,
@@ -178,13 +205,13 @@ Both
            mv.XmlSeq() - these try to preserve the element sequencing but with added complexity when
            working with the Map representation.
 
-<h4>Running "go test"</h4>
+#### Running "go test"
 
-Because there are no guarantees on the sequence map elements are retrieved, the tests have been 
-written for visual verification in most cases.  One advantage is that you can easily use the 
+Because there are no guarantees on the sequence map elements are retrieved, the tests have been
+written for visual verification in most cases.  One advantage is that you can easily use the
 output from running "go test" as examples of calling the various functions and methods.
 
-<h4>Motivation</h4>
+#### Motivation
 
 I make extensive use of JSON for messaging and typically unmarshal the messages into
 `map[string]interface{}` values.  This is easily done using `json.Unmarshal` from the
@@ -202,6 +229,6 @@ Over the next year and a half additional features were added, and the companion 
 package was released to address XML encoding of arbitrary JSON and `map[string]interface{}`
 values.  As part of a refactoring of our production system and looking at how we had been
 using the x2j and j2x packages we found that we rarely performed direct XML-to-JSON or
-JSON-to_XML conversion and that working with the XML or JSON as `map[string]interface{}`
+JSON-to-XML conversion and that working with the XML or JSON as `map[string]interface{}`
 values was the primary value.  Thus, everything was refactored into the mxj package.
 
